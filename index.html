@@ -102,7 +102,9 @@
         const targetCol = parseInt(targetDrop.dataset.col, 10);
 
         // ドロップの移動処理
-        moveDrop(selectedRow, selectedCol, targetRow, targetCol);
+        if (Math.abs(selectedRow - targetRow) <= 1 && Math.abs(selectedCol - targetCol) <= 1) {
+          moveDrop(selectedRow, selectedCol, targetRow, targetCol);
+        }
 
         // グリッドを再描画
         renderGrid();
