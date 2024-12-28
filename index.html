@@ -14,24 +14,30 @@
       flex-direction: column;
       height: 100vh;
       margin: 0;
+      overflow: hidden;
     }
     #enemy {
       text-align: center;
     }
     #game-board {
       display: grid;
-      grid-template-columns: repeat(6, 50px); /* 6列 */
-      grid-template-rows: repeat(5, 50px);   /* 5行 */
+      grid-template-columns: repeat(6, 1fr); /* 6列 */
+      grid-template-rows: repeat(5, 1fr);   /* 5行 */
       gap: 5px;
       margin-top: 20px;
+      width: 300px; /* 画面に合わせた幅 */
+      height: 250px;
     }
     .drop {
-      width: 50px;
-      height: 50px;
+      width: 100%;
+      height: 100%;
       background-size: cover;
       cursor: pointer;
       border-radius: 5px;
       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+      display: flex;
+      justify-content: center;
+      align-items: center;
     }
     /* 五色のドロップ */
     .drop[data-type="fire"] {
@@ -62,6 +68,14 @@
       background-color: red;
       border-radius: 10px;
     }
+    @media (max-width: 600px) {
+      #game-board {
+        width: 100%;
+        height: auto;
+        grid-template-columns: repeat(3, 1fr); /* モバイルでは3列に */
+        grid-template-rows: repeat(5, 1fr);   /* 行はそのまま */
+      }
+    }
   </style>
 </head>
 <body>
@@ -74,42 +88,32 @@
   </div>
 
   <div id="game-board">
-    <div class="drop" data-type="fire" draggable="true"></div>
-    <div class="drop" data-type="water" draggable="true"></div>
-    <div class="drop" data-type="wood" draggable="true"></div>
-    <div class="drop" data-type="light" draggable="true"></div>
-    <div class="drop" data-type="dark" draggable="true"></div>
-    <div class="drop" data-type="fire" draggable="true"></div>
-    <div class="drop" data-type="water" draggable="true"></div>
-    <div class="drop" data-type="wood" draggable="true"></div>
-    <div class="drop" data-type="light" draggable="true"></div>
-    <div class="drop" data-type="dark" draggable="true"></div>
-    <div class="drop" data-type="fire" draggable="true"></div>
-    <div class="drop" data-type="water" draggable="true"></div>
-    <div class="drop" data-type="wood" draggable="true"></div>
-    <div class="drop" data-type="light" draggable="true"></div>
-    <div class="drop" data-type="dark" draggable="true"></div>
+    <!-- 6x5 のドロップが並びます -->
   </div>
 
   <script>
     const board = document.getElementById('game-board');
     const enemyHp = document.getElementById('enemy-hp');
-    const drops = document.querySelectorAll('.drop');
-    
+    const colors = ['fire', 'water', 'wood', 'light', 'dark'];
     let enemyHealth = 100; // 敵の初期HP
 
-    // ドロップをドラッグできるようにする
-    drops.forEach(drop => {
-      drop.addEventListener('dragstart', (e) => {
-        e.dataTransfer.setData('text/plain', e.target.dataset.type);
-      });
-    });
+    // ゲームボードにドロップをランダムに配置
+    function createBoard() {
+      board.innerHTML = ''; // ボードをリセット
+      for (let i = 0; i < 30; i++) {
+        const drop = document.createElement('div');
+        drop.classList.add('drop');
+        drop.setAttribute('data-type', colors[Math.floor(Math.random() * colors.length)]);
+        drop.setAttribute('draggable', 'true');
+        drop.addEventListener('dragstart', (e) => {
+          e.dataTransfer.setData('text/plain', e.target.dataset.type);
+        });
+        board.appendChild(drop);
+      }
+    }
 
-    board.addEventListener('dragover', (e) => {
-      e.preventDefault();
-    });
-
-    board.addEventListener('drop', (e) => {
+    // ドロップを並べ替え
+    function handleDrop(e) {
       e.preventDefault();
       const targetDrop = e.target;
       const draggedType = e.dataTransfer.getData('text/plain');
@@ -121,12 +125,13 @@
 
         // 揃い判定とダメージ処理
         checkMatches();
+        dropChain();
       }
-    });
+    }
 
+    // 揃ったドロップをチェック
     function checkMatches() {
       // マッチング処理: 3つ以上のドロップが揃った場合、敵にダメージを与える
-      // ここでは簡単にダメージを与える処理を入れてみます
       const matchFound = Math.random() < 0.5; // 簡易的なランダム判定
       if (matchFound) {
         enemyHealth -= 10; // ダメージ
@@ -136,6 +141,45 @@
         }
       }
     }
+
+    // 落ちコンボを処理（ドロップを落とす）
+    function dropChain() {
+      const drops = document.querySelectorAll('.drop');
+      let moved = false;
+
+      for (let i = drops.length - 1; i >= 0; i--) {
+        const drop = drops[i];
+        const dropTop = drop.offsetTop;
+        const nextDrop = drops[i + 6]; // 下のドロップ
+
+        if (!nextDrop && dropTop < (board.offsetHeight - 50)) {
+          const newDrop = document.createElement('div');
+          newDrop.classList.add('drop');
+          newDrop.setAttribute('data-type', colors[Math.floor(Math.random() * colors.length)]);
+          newDrop.setAttribute('draggable', 'true');
+          newDrop.addEventListener('dragstart', (e) => {
+            e.dataTransfer.setData('text/plain', e.target.dataset.type);
+          });
+          board.appendChild(newDrop);
+          drop.remove();
+          moved = true;
+        }
+      }
+
+      if (moved) {
+        dropChain();
+      }
+    }
+
+    board.addEventListener('dragover', (e) => {
+      e.preventDefault();
+    });
+
+    board.addEventListener('drop', handleDrop);
+
+    // ゲームボードの初期化
+    createBoard();
+
   </script>
 
 </body>
