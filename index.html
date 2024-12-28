@@ -24,7 +24,7 @@
       border-radius: 5px;
       cursor: pointer;
       position: absolute;
-      transition: all 0.1s ease;
+      transition: top 0.3s ease-in-out; /* 落ちるアニメーション */
     }
 
     .drop[data-type="fire"] {
@@ -209,7 +209,28 @@
           }
         }
       }
+
+      // 新しいドロップを落とす
+      addNewDrops();
     }
+
+    // 新しいドロップを追加する関数
+    function addNewDrops() {
+      for (let col = 0; col < gridCols; col++) {
+        for (let row = gridRows - 1; row >= 0; row--) {
+          if (gridState[row][col] === null) {
+            gridState[row][col] = dropTypes[Math.floor(Math.random() * dropTypes.length)];
+          }
+        }
+      }
+
+      renderGrid();
+    }
+
+    // 最初にドロップが落ちる処理を追加
+    setInterval(() => {
+      checkAndClearMatches();
+    }, 1000); // 1秒ごとに落ちる動作をチェック
   </script>
 </body>
 </html>
