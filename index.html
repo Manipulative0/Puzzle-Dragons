@@ -90,15 +90,64 @@
         const drop = document.createElement('div');
         drop.classList.add('drop');
         drop.dataset.type = types[Math.floor(Math.random() * types.length)];
-        drop.setAttribute('draggable', 'true');
-        drop.addEventListener('dragstart', (e) => {
-          e.dataTransfer.setData('text/plain', e.target.dataset.type);
+        drop.setAttribute('data-index', i);  // インデックスを設定
+        drop.addEventListener('touchstart', (e) => {
+          e.preventDefault();
+          startDrag(e);
         });
         board.appendChild(drop);
       }
     }
 
     createDrops();
+
+    // ドロップをタッチする開始時の処理
+    let draggedDrop = null;
+    let startX = 0;
+    let startY = 0;
+    let offsetX = 0;
+    let offsetY = 0;
+
+    function startDrag(e) {
+      draggedDrop = e.target;
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+      offsetX = draggedDrop.getBoundingClientRect().left - startX;
+      offsetY = draggedDrop.getBoundingClientRect().top - startY;
+      document.addEventListener('touchmove', onDragMove);
+      document.addEventListener('touchend', onDragEnd);
+    }
+
+    // ドラッグ中の処理
+    function onDragMove(e) {
+      const x = e.touches[0].clientX + offsetX;
+      const y = e.touches[0].clientY + offsetY;
+      draggedDrop.style.position = 'absolute';
+      draggedDrop.style.left = `${x}px`;
+      draggedDrop.style.top = `${y}px`;
+    }
+
+    // ドラッグ終了時の処理
+    function onDragEnd(e) {
+      document.removeEventListener('touchmove', onDragMove);
+      document.removeEventListener('touchend', onDragEnd);
+
+      // ドロップ先がある場合、その位置にドロップを戻す
+      const targetDrop = document.elementFromPoint(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+      if (targetDrop && targetDrop.classList.contains('drop') && targetDrop !== draggedDrop) {
+        const targetType = targetDrop.dataset.type;
+        targetDrop.dataset.type = draggedDrop.dataset.type;
+        draggedDrop.dataset.type = targetType;
+
+        // 揃い判定とダメージ処理
+        checkMatches();
+      }
+
+      // ドロップを元の位置に戻す
+      draggedDrop.style.position = '';
+      draggedDrop.style.left = '';
+      draggedDrop.style.top = '';
+    }
 
     // ドロップをドラッグできるようにする
     board.addEventListener('dragover', (e) => {
@@ -169,8 +218,9 @@
             newDrop.classList.add('drop');
             newDrop.dataset.type = types[Math.floor(Math.random() * types.length)];
             newDrop.setAttribute('draggable', 'true');
-            newDrop.addEventListener('dragstart', (e) => {
-              e.dataTransfer.setData('text/plain', e.target.dataset.type);
+            newDrop.addEventListener('touchstart', (e) => {
+              e.preventDefault();
+              startDrag(e);
             });
             board.appendChild(newDrop);
           }
@@ -181,4 +231,3 @@
 
 </body>
 </html>
-
