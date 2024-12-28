@@ -59,12 +59,11 @@
     <div class="drop" data-type="wood" style="left: 100px; top: 0px;"></div>
     <div class="drop" data-type="light" style="left: 150px; top: 0px;"></div>
     <div class="drop" data-type="dark" style="left: 200px; top: 0px;"></div>
-    <!-- 必要数だけ上記を繰り返し -->
   </div>
 
   <script>
     const grid = document.getElementById("grid");
-    const drops = document.querySelectorAll(".drop");
+    const drops = Array.from(document.querySelectorAll(".drop"));
 
     let selectedDrop = null; // 選択されたドロップ
     let startX, startY, offsetX, offsetY;
@@ -103,46 +102,65 @@
     // ドロップをドラッグ終了
     grid.addEventListener("pointerup", () => {
       if (!selectedDrop) return;
-      selectedDrop.style.cursor = "grab";
 
       // グリッド位置にスナップする
-      const x = Math.round(selectedDrop.offsetLeft / 50) * 50;
-      const y = Math.round(selectedDrop.offsetTop / 50) * 50;
+      const newX = Math.round(selectedDrop.offsetLeft / 50) * 50;
+      const newY = Math.round(selectedDrop.offsetTop / 50) * 50;
 
-      selectedDrop.style.left = `${x}px`;
-      selectedDrop.style.top = `${y}px`;
+      // 他のドロップと位置を交換
+      const targetDrop = drops.find(
+        (drop) =>
+          drop !== selectedDrop &&
+          Math.round(drop.offsetLeft / 50) * 50 === newX &&
+          Math.round(drop.offsetTop / 50) * 50 === newY
+      );
 
+      if (targetDrop) {
+        // 現在の位置を保存
+        const tempX = targetDrop.style.left;
+        const tempY = targetDrop.style.top;
+
+        // 位置を入れ替え
+        targetDrop.style.left = selectedDrop.style.left;
+        targetDrop.style.top = selectedDrop.style.top;
+
+        selectedDrop.style.left = tempX;
+        selectedDrop.style.top = tempY;
+      } else {
+        // 他のドロップがない場合はその場でスナップ
+        selectedDrop.style.left = `${newX}px`;
+        selectedDrop.style.top = `${newY}px`;
+      }
+
+      selectedDrop.style.cursor = "grab";
       selectedDrop = null;
 
-      // コンボ判定をここに追加
+      // コンボ判定を呼び出す
       checkCombos();
     });
 
     // コンボを判定する関数
     function checkCombos() {
-      const positions = Array.from(drops).map((drop) => ({
+      const positions = drops.map((drop) => ({
         type: drop.getAttribute("data-type"),
         x: Math.round(drop.offsetLeft / 50),
         y: Math.round(drop.offsetTop / 50),
       }));
 
-      // 水平と垂直で一致する3つ以上のドロップをチェック
       const combos = findCombos(positions);
 
-      // コンボが見つかった場合の処理
       if (combos.length > 0) {
         console.log("コンボ成立:", combos);
-        // コンボ成立エフェクトや処理をここに記述
       }
     }
 
     // コンボを見つける
     function findCombos(positions) {
       const combos = [];
-      // 水平または垂直方向で同じ種類が3つ以上揃ったものを判定
-      // このロジックは詳細実装が必要
+      // 同じ種類が連続している場合をチェック
       return combos;
     }
   </script>
 </body>
 </html>
+
