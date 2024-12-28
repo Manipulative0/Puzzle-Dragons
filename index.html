@@ -11,22 +11,19 @@
       grid-template-columns: repeat(6, 50px); /* 6列、1セル50px */
       grid-template-rows: repeat(5, 50px); /* 5行、1セル50px */
       gap: 5px; /* セル間の隙間 */
-      width: 320px; /* 6x50 + 隙間で幅 */
-      height: 270px; /* 5x50 + 隙間で高さ */
       position: relative;
       border: 2px solid #000;
-      overflow: hidden; /* グリッド外にはみ出さないように設定 */
       margin: 20px auto;
+      width: max-content;
     }
 
     /* ドロップの設定 */
     .drop {
       width: 50px;
       height: 50px;
-      position: absolute;
       background-size: cover;
       border-radius: 5px;
-      cursor: pointer;
+      position: relative;
     }
 
     .drop[data-type="fire"] {
@@ -48,91 +45,89 @@
     .drop[data-type="dark"] {
       background-image: url('闇.jpg');
     }
+
+    /* ドラッグ中のスタイル */
+    .dragging {
+      opacity: 0.5;
+    }
   </style>
 </head>
 <body>
-  <div id="grid">
-    <!-- ドロップを生成 -->
-    <div class="drop" data-type="fire" style="left: 0px; top: 0px;"></div>
-    <div class="drop" data-type="water" style="left: 50px; top: 0px;"></div>
-    <div class="drop" data-type="wood" style="left: 100px; top: 0px;"></div>
-    <div class="drop" data-type="light" style="left: 150px; top: 0px;"></div>
-    <div class="drop" data-type="dark" style="left: 200px; top: 0px;"></div>
-  </div>
+  <div id="grid"></div>
 
   <script>
+    // グリッド設定
+    const gridRows = 5; // 行数
+    const gridCols = 6; // 列数
     const grid = document.getElementById("grid");
-    const drops = Array.from(document.querySelectorAll(".drop"));
+
+    // ドロップ初期配置
+    const dropTypes = ["fire", "water", "wood", "light", "dark"];
+    const gridState = []; // グリッドの状態を保持する配列
+
+    // グリッドにドロップをランダム配置
+    for (let row = 0; row < gridRows; row++) {
+      const rowState = [];
+      for (let col = 0; col < gridCols; col++) {
+        const type = dropTypes[Math.floor(Math.random() * dropTypes.length)];
+        const drop = document.createElement("div");
+        drop.classList.add("drop");
+        drop.dataset.type = type;
+        drop.dataset.row = row;
+        drop.dataset.col = col;
+
+        drop.draggable = true; // ドラッグ可能
+        grid.appendChild(drop);
+        rowState.push(type); // 状態に追加
+      }
+      gridState.push(rowState);
+    }
 
     let selectedDrop = null;
-    let startX, startY, offsetX, offsetY;
 
     // ドロップをドラッグ開始
-    drops.forEach((drop) => {
-      drop.addEventListener("pointerdown", (e) => {
-        // 火ドロップのみ動かせる
-        if (e.target.dataset.type !== "fire") return;
-
+    grid.addEventListener("dragstart", (e) => {
+      if (e.target.classList.contains("drop")) {
         selectedDrop = e.target;
-        startX = e.clientX;
-        startY = e.clientY;
-        offsetX = selectedDrop.offsetLeft;
-        offsetY = selectedDrop.offsetTop;
-        selectedDrop.style.cursor = "grabbing";
-      });
-    });
-
-    // ドロップをドラッグ中
-    grid.addEventListener("pointermove", (e) => {
-      if (!selectedDrop) return;
-
-      const moveX = e.clientX - startX + offsetX;
-      const moveY = e.clientY - startY + offsetY;
-
-      // グリッド内のみに移動を制限
-      const gridRect = grid.getBoundingClientRect();
-      const minX = 0;
-      const minY = 0;
-      const maxX = gridRect.width - selectedDrop.offsetWidth;
-      const maxY = gridRect.height - selectedDrop.offsetHeight;
-
-      selectedDrop.style.left = Math.max(minX, Math.min(maxX, moveX)) + "px";
-      selectedDrop.style.top = Math.max(minY, Math.min(maxY, moveY)) + "px";
+        selectedDrop.classList.add("dragging");
+      }
     });
 
     // ドロップをドラッグ終了
-    grid.addEventListener("pointerup", () => {
-      if (!selectedDrop) return;
-
-      const newX = Math.round(selectedDrop.offsetLeft / 50) * 50;
-      const newY = Math.round(selectedDrop.offsetTop / 50) * 50;
-
-      // 他のドロップがあるかチェック
-      const targetDrop = drops.find(
-        (drop) =>
-          drop !== selectedDrop &&
-          Math.round(drop.offsetLeft / 50) * 50 === newX &&
-          Math.round(drop.offsetTop / 50) * 50 === newY
-      );
-
-      if (targetDrop) {
-        // 位置を交換
-        const tempX = targetDrop.style.left;
-        const tempY = targetDrop.style.top;
-
-        targetDrop.style.left = `${selectedDrop.offsetLeft}px`;
-        targetDrop.style.top = `${selectedDrop.offsetTop}px`;
-
-        selectedDrop.style.left = tempX;
-        selectedDrop.style.top = tempY;
-      } else {
-        // 他のドロップがない場合、その場でスナップ
-        selectedDrop.style.left = `${newX}px`;
-        selectedDrop.style.top = `${newY}px`;
+    grid.addEventListener("dragend", () => {
+      if (selectedDrop) {
+        selectedDrop.classList.remove("dragging");
+        selectedDrop = null;
       }
+    });
 
-      selectedDrop.style.cursor = "pointer";
-      selectedDrop = null;
+    // ドロップをドロップ先に置く
+    grid.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      const targetDrop = e.target;
+
+      // ドロップ先が有効な場所かチェック
+      if (targetDrop.classList.contains("drop") && targetDrop !== selectedDrop) {
+        const targetRow = parseInt(targetDrop.dataset.row, 10);
+        const targetCol = parseInt(targetDrop.dataset.col, 10);
+
+        const selectedRow = parseInt(selectedDrop.dataset.row, 10);
+        const selectedCol = parseInt(selectedDrop.dataset.col, 10);
+
+        // 隣接セルのみ交換可能
+        const isAdjacent =
+          (Math.abs(selectedRow - targetRow) === 1 && selectedCol === targetCol) ||
+          (Math.abs(selectedCol - targetCol) === 1 && selectedRow === targetRow);
+
+        if (isAdjacent) {
+          // 位置を交換
+          [selectedDrop.dataset.row, targetDrop.dataset.row] = [targetDrop.dataset.row, selectedDrop.dataset.row];
+          [selectedDrop.dataset.col, targetDrop.dataset.col] = [targetDrop.dataset.col, selectedDrop.dataset.col];
+
+          // スタイルの位置を交換
+          grid.insertBefore(selectedDrop, targetDrop);
+        }
+      }
     });
   </script>
 </body>
