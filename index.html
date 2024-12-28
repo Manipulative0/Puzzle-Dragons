@@ -80,42 +80,48 @@
     renderGrid();
 
     let selectedDrop = null;
+    let isDragging = false;
 
     // ドラッグ開始
     grid.addEventListener("mousedown", (e) => {
       if (e.target.classList.contains("drop")) {
         selectedDrop = e.target;
+        isDragging = true;
       }
     });
 
     // ドラッグ終了
     grid.addEventListener("mouseup", (e) => {
-      if (!selectedDrop || !e.target.classList.contains("drop")) {
+      if (isDragging && selectedDrop && e.target.classList.contains("drop")) {
+        const targetDrop = e.target;
+
+        // 選択されたドロップとターゲットドロップの位置を取得
+        const selectedRow = parseInt(selectedDrop.dataset.row, 10);
+        const selectedCol = parseInt(selectedDrop.dataset.col, 10);
+        const targetRow = parseInt(targetDrop.dataset.row, 10);
+        const targetCol = parseInt(targetDrop.dataset.col, 10);
+
+        // ドロップの移動処理
+        moveDrop(selectedRow, selectedCol, targetRow, targetCol);
+
+        // グリッドを再描画
+        renderGrid();
+
+        // 3つ以上つながったドロップを削除
+        checkAndClearMatches();
+
         selectedDrop = null;
-        return;
+        isDragging = false;
       }
-
-      const targetDrop = e.target;
-
-      // 選択されたドロップとターゲットドロップの位置を取得
-      const selectedRow = parseInt(selectedDrop.dataset.row, 10);
-      const selectedCol = parseInt(selectedDrop.dataset.col, 10);
-      const targetRow = parseInt(targetDrop.dataset.row, 10);
-      const targetCol = parseInt(targetDrop.dataset.col, 10);
-
-      // 位置を交換
-      const temp = gridState[selectedRow][selectedCol];
-      gridState[selectedRow][selectedCol] = gridState[targetRow][targetCol];
-      gridState[targetRow][targetCol] = temp;
-
-      // グリッドを再描画
-      renderGrid();
-
-      // 3つ以上つながったドロップを削除
-      checkAndClearMatches();
-
-      selectedDrop = null;
     });
+
+    // ドロップを移動する関数
+    function moveDrop(fromRow, fromCol, toRow, toCol) {
+      // ドロップをスライドさせる
+      const temp = gridState[fromRow][fromCol];
+      gridState[fromRow][fromCol] = gridState[toRow][toCol];
+      gridState[toRow][toCol] = temp;
+    }
 
     // 3つ以上並んだドロップを探して削除
     function checkAndClearMatches() {
