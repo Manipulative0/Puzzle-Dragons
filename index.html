@@ -20,18 +20,19 @@
     }
     #game-board {
       display: grid;
-      grid-template-columns: repeat(6, 50px); /* 6列 */
-      grid-template-rows: repeat(5, 50px);   /* 5行 */
+      grid-template-columns: repeat(6, 60px); /* 6列 */
+      grid-template-rows: repeat(5, 60px);   /* 5行 */
       gap: 5px;
       margin-top: 20px;
     }
     .drop {
-      width: 50px;
-      height: 50px;
+      width: 60px;
+      height: 60px;
       background-size: cover;
       cursor: pointer;
       border-radius: 5px;
       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+      position: relative;
     }
     /* 五色のドロップ */
     .drop[data-type="fire"] {
@@ -89,6 +90,11 @@
     <div class="drop" data-type="wood" draggable="true"></div>
     <div class="drop" data-type="light" draggable="true"></div>
     <div class="drop" data-type="dark" draggable="true"></div>
+    <div class="drop" data-type="fire" draggable="true"></div>
+    <div class="drop" data-type="water" draggable="true"></div>
+    <div class="drop" data-type="wood" draggable="true"></div>
+    <div class="drop" data-type="light" draggable="true"></div>
+    <div class="drop" data-type="dark" draggable="true"></div>
   </div>
 
   <script>
@@ -98,11 +104,13 @@
     
     let enemyHealth = 100; // 敵の初期HP
     let draggedDrop = null;
+    let draggedDropPos = null;
 
     // ドロップをドラッグできるようにする
     drops.forEach(drop => {
       drop.addEventListener('dragstart', (e) => {
         draggedDrop = e.target; // ドラッグ中のドロップを保存
+        draggedDropPos = getDropPosition(draggedDrop); // 位置を保存
       });
 
       drop.addEventListener('dragover', (e) => {
@@ -113,13 +121,10 @@
         e.preventDefault();
 
         // ドロップした位置のデータとドラッグ中のデータを入れ替える
-        if (draggedDrop !== e.target) {
-          const draggedType = draggedDrop.dataset.type;
-          draggedDrop.dataset.type = e.target.dataset.type;
-          e.target.dataset.type = draggedType;
-          
-          // 揃い判定とダメージ処理
-          checkMatches();
+        const targetDrop = e.target;
+        if (draggedDrop !== targetDrop) {
+          swapDrops(draggedDrop, targetDrop); // ドロップを交換
+          checkMatches(); // 揃い判定
         }
       });
     });
@@ -127,6 +132,7 @@
     // タッチイベントの処理（スマートフォン対応）
     board.addEventListener('touchstart', (e) => {
       draggedDrop = e.target.closest('.drop'); // タッチしたドロップを保存
+      draggedDropPos = getDropPosition(draggedDrop); // 位置を保存
     });
 
     board.addEventListener('touchmove', (e) => {
@@ -136,18 +142,33 @@
     board.addEventListener('touchend', (e) => {
       const targetDrop = e.target.closest('.drop');
       if (draggedDrop && targetDrop && draggedDrop !== targetDrop) {
-        const draggedType = draggedDrop.dataset.type;
-        draggedDrop.dataset.type = targetDrop.dataset.type;
-        targetDrop.dataset.type = draggedType;
-        
-        // 揃い判定とダメージ処理
-        checkMatches();
+        swapDrops(draggedDrop, targetDrop); // ドロップを交換
+        checkMatches(); // 揃い判定
       }
     });
 
+    // ドロップの位置を取得
+    function getDropPosition(drop) {
+      const index = Array.from(board.children).indexOf(drop);
+      const row = Math.floor(index / 6);
+      const col = index % 6;
+      return { row, col };
+    }
+
+    // ドロップの位置を交換
+    function swapDrops(drop1, drop2) {
+      const tempType = drop1.dataset.type;
+      drop1.dataset.type = drop2.dataset.type;
+      drop2.dataset.type = tempType;
+
+      // 見た目の位置も交換
+      const tempHTML = drop1.outerHTML;
+      drop1.outerHTML = drop2.outerHTML;
+      drop2.outerHTML = tempHTML;
+    }
+
+    // 揃い判定とダメージ処理
     function checkMatches() {
-      // マッチング処理: 3つ以上のドロップが揃った場合、敵にダメージを与える
-      // ここでは簡単にダメージを与える処理を入れてみます
       const matchFound = Math.random() < 0.5; // 簡易的なランダム判定
       if (matchFound) {
         enemyHealth -= 10; // ダメージ
