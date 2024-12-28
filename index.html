@@ -13,8 +13,8 @@
       gap: 5px; /* セル間の隙間 */
       width: 320px; /* 6x50 + 隙間で幅 */
       height: 270px; /* 5x50 + 隙間で高さ */
-      border: 2px solid #000;
       position: relative;
+      border: 2px solid #000;
       overflow: hidden; /* グリッド外にはみ出さないように設定 */
       margin: 20px auto;
     }
@@ -25,9 +25,8 @@
       height: 50px;
       position: absolute;
       background-size: cover;
-      touch-action: none; /* タッチデバイスで動作 */
       border-radius: 5px;
-      cursor: grab;
+      cursor: pointer;
     }
 
     .drop[data-type="fire"] {
@@ -65,12 +64,15 @@
     const grid = document.getElementById("grid");
     const drops = Array.from(document.querySelectorAll(".drop"));
 
-    let selectedDrop = null; // 選択されたドロップ
+    let selectedDrop = null;
     let startX, startY, offsetX, offsetY;
 
     // ドロップをドラッグ開始
     drops.forEach((drop) => {
       drop.addEventListener("pointerdown", (e) => {
+        // 火ドロップのみ動かせる
+        if (e.target.dataset.type !== "fire") return;
+
         selectedDrop = e.target;
         startX = e.clientX;
         startY = e.clientY;
@@ -84,11 +86,10 @@
     grid.addEventListener("pointermove", (e) => {
       if (!selectedDrop) return;
 
-      // 新しい位置を計算
       const moveX = e.clientX - startX + offsetX;
       const moveY = e.clientY - startY + offsetY;
 
-      // グリッド内に位置を制限
+      // グリッド内のみに移動を制限
       const gridRect = grid.getBoundingClientRect();
       const minX = 0;
       const minY = 0;
@@ -103,11 +104,10 @@
     grid.addEventListener("pointerup", () => {
       if (!selectedDrop) return;
 
-      // グリッド位置にスナップする
       const newX = Math.round(selectedDrop.offsetLeft / 50) * 50;
       const newY = Math.round(selectedDrop.offsetTop / 50) * 50;
 
-      // 他のドロップと位置を交換
+      // 他のドロップがあるかチェック
       const targetDrop = drops.find(
         (drop) =>
           drop !== selectedDrop &&
@@ -116,51 +116,24 @@
       );
 
       if (targetDrop) {
-        // 現在の位置を保存
+        // 位置を交換
         const tempX = targetDrop.style.left;
         const tempY = targetDrop.style.top;
 
-        // 位置を入れ替え
-        targetDrop.style.left = selectedDrop.style.left;
-        targetDrop.style.top = selectedDrop.style.top;
+        targetDrop.style.left = `${selectedDrop.offsetLeft}px`;
+        targetDrop.style.top = `${selectedDrop.offsetTop}px`;
 
         selectedDrop.style.left = tempX;
         selectedDrop.style.top = tempY;
       } else {
-        // 他のドロップがない場合はその場でスナップ
+        // 他のドロップがない場合、その場でスナップ
         selectedDrop.style.left = `${newX}px`;
         selectedDrop.style.top = `${newY}px`;
       }
 
-      selectedDrop.style.cursor = "grab";
+      selectedDrop.style.cursor = "pointer";
       selectedDrop = null;
-
-      // コンボ判定を呼び出す
-      checkCombos();
     });
-
-    // コンボを判定する関数
-    function checkCombos() {
-      const positions = drops.map((drop) => ({
-        type: drop.getAttribute("data-type"),
-        x: Math.round(drop.offsetLeft / 50),
-        y: Math.round(drop.offsetTop / 50),
-      }));
-
-      const combos = findCombos(positions);
-
-      if (combos.length > 0) {
-        console.log("コンボ成立:", combos);
-      }
-    }
-
-    // コンボを見つける
-    function findCombos(positions) {
-      const combos = [];
-      // 同じ種類が連続している場合をチェック
-      return combos;
-    }
   </script>
 </body>
 </html>
-
