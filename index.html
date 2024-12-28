@@ -3,27 +3,26 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>6x5 ドロップゲーム</title>
+  <title>パズルゲーム</title>
   <style>
     /* グリッド設定 */
     #grid {
       display: grid;
-      grid-template-columns: repeat(6, 50px); /* 6列、1セル50px */
-      grid-template-rows: repeat(5, 50px); /* 5行、1セル50px */
-      gap: 5px; /* セル間の隙間 */
+      grid-template-columns: repeat(6, 50px); /* 6列 */
+      grid-template-rows: repeat(5, 50px);   /* 5行 */
+      gap: 5px;
       position: relative;
-      border: 2px solid #000;
       margin: 20px auto;
       width: max-content;
+      border: 2px solid #000;
     }
 
-    /* ドロップの設定 */
     .drop {
       width: 50px;
       height: 50px;
       background-size: cover;
       border-radius: 5px;
-      position: relative;
+      cursor: pointer;
     }
 
     .drop[data-type="fire"] {
@@ -45,90 +44,148 @@
     .drop[data-type="dark"] {
       background-image: url('闇.jpg');
     }
-
-    /* ドラッグ中のスタイル */
-    .dragging {
-      opacity: 0.5;
-    }
   </style>
 </head>
 <body>
   <div id="grid"></div>
 
   <script>
-    // グリッド設定
-    const gridRows = 5; // 行数
-    const gridCols = 6; // 列数
+    const gridRows = 5;
+    const gridCols = 6;
+    const dropTypes = ["fire", "water", "wood", "light", "dark"];
     const grid = document.getElementById("grid");
 
-    // ドロップ初期配置
-    const dropTypes = ["fire", "water", "wood", "light", "dark"];
-    const gridState = []; // グリッドの状態を保持する配列
+    // グリッド状態を保持する2次元配列
+    const gridState = Array.from({ length: gridRows }, () =>
+      Array.from({ length: gridCols }, () =>
+        dropTypes[Math.floor(Math.random() * dropTypes.length)]
+      )
+    );
 
-    // グリッドにドロップをランダム配置
-    for (let row = 0; row < gridRows; row++) {
-      const rowState = [];
-      for (let col = 0; col < gridCols; col++) {
-        const type = dropTypes[Math.floor(Math.random() * dropTypes.length)];
-        const drop = document.createElement("div");
-        drop.classList.add("drop");
-        drop.dataset.type = type;
-        drop.dataset.row = row;
-        drop.dataset.col = col;
-
-        drop.draggable = true; // ドラッグ可能
-        grid.appendChild(drop);
-        rowState.push(type); // 状態に追加
-      }
-      gridState.push(rowState);
+    // グリッド描画
+    function renderGrid() {
+      grid.innerHTML = ""; // グリッドをリセット
+      gridState.forEach((row, rowIndex) => {
+        row.forEach((type, colIndex) => {
+          const drop = document.createElement("div");
+          drop.classList.add("drop");
+          drop.dataset.type = type;
+          drop.dataset.row = rowIndex;
+          drop.dataset.col = colIndex;
+          grid.appendChild(drop);
+        });
+      });
     }
+
+    renderGrid();
 
     let selectedDrop = null;
 
-    // ドロップをドラッグ開始
-    grid.addEventListener("dragstart", (e) => {
+    // ドラッグ開始
+    grid.addEventListener("mousedown", (e) => {
       if (e.target.classList.contains("drop")) {
         selectedDrop = e.target;
-        selectedDrop.classList.add("dragging");
       }
     });
 
-    // ドロップをドラッグ終了
-    grid.addEventListener("dragend", () => {
-      if (selectedDrop) {
-        selectedDrop.classList.remove("dragging");
+    // ドラッグ終了
+    grid.addEventListener("mouseup", (e) => {
+      if (!selectedDrop || !e.target.classList.contains("drop")) {
         selectedDrop = null;
+        return;
       }
-    });
 
-    // ドロップをドロップ先に置く
-    grid.addEventListener("dragover", (e) => {
-      e.preventDefault();
       const targetDrop = e.target;
 
-      // ドロップ先が有効な場所かチェック
-      if (targetDrop.classList.contains("drop") && targetDrop !== selectedDrop) {
-        const targetRow = parseInt(targetDrop.dataset.row, 10);
-        const targetCol = parseInt(targetDrop.dataset.col, 10);
+      // 選択されたドロップとターゲットドロップの位置を取得
+      const selectedRow = parseInt(selectedDrop.dataset.row, 10);
+      const selectedCol = parseInt(selectedDrop.dataset.col, 10);
+      const targetRow = parseInt(targetDrop.dataset.row, 10);
+      const targetCol = parseInt(targetDrop.dataset.col, 10);
 
-        const selectedRow = parseInt(selectedDrop.dataset.row, 10);
-        const selectedCol = parseInt(selectedDrop.dataset.col, 10);
+      // 位置を交換
+      const temp = gridState[selectedRow][selectedCol];
+      gridState[selectedRow][selectedCol] = gridState[targetRow][targetCol];
+      gridState[targetRow][targetCol] = temp;
 
-        // 隣接セルのみ交換可能
-        const isAdjacent =
-          (Math.abs(selectedRow - targetRow) === 1 && selectedCol === targetCol) ||
-          (Math.abs(selectedCol - targetCol) === 1 && selectedRow === targetRow);
+      // グリッドを再描画
+      renderGrid();
 
-        if (isAdjacent) {
-          // 位置を交換
-          [selectedDrop.dataset.row, targetDrop.dataset.row] = [targetDrop.dataset.row, selectedDrop.dataset.row];
-          [selectedDrop.dataset.col, targetDrop.dataset.col] = [targetDrop.dataset.col, selectedDrop.dataset.col];
+      // 3つ以上つながったドロップを削除
+      checkAndClearMatches();
 
-          // スタイルの位置を交換
-          grid.insertBefore(selectedDrop, targetDrop);
+      selectedDrop = null;
+    });
+
+    // 3つ以上並んだドロップを探して削除
+    function checkAndClearMatches() {
+      const toClear = [];
+
+      // 横方向のチェック
+      for (let row = 0; row < gridRows; row++) {
+        let matchCount = 1;
+        for (let col = 1; col < gridCols; col++) {
+          if (gridState[row][col] === gridState[row][col - 1]) {
+            matchCount++;
+            if (matchCount >= 3 && col === gridCols - 1) {
+              toClear.push([row, col - 2], [row, col - 1], [row, col]);
+            }
+          } else {
+            if (matchCount >= 3) {
+              for (let i = 1; i <= matchCount; i++) {
+                toClear.push([row, col - i]);
+              }
+            }
+            matchCount = 1;
+          }
         }
       }
-    });
+
+      // 縦方向のチェック
+      for (let col = 0; col < gridCols; col++) {
+        let matchCount = 1;
+        for (let row = 1; row < gridRows; row++) {
+          if (gridState[row][col] === gridState[row - 1][col]) {
+            matchCount++;
+            if (matchCount >= 3 && row === gridRows - 1) {
+              toClear.push([row - 2, col], [row - 1, col], [row, col]);
+            }
+          } else {
+            if (matchCount >= 3) {
+              for (let i = 1; i <= matchCount; i++) {
+                toClear.push([row - i, col]);
+              }
+            }
+            matchCount = 1;
+          }
+        }
+      }
+
+      // ドロップを削除
+      toClear.forEach(([row, col]) => {
+        gridState[row][col] = null;
+      });
+
+      // ドロップを下に落とし、新しいドロップを生成
+      for (let col = 0; col < gridCols; col++) {
+        for (let row = gridRows - 1; row >= 0; row--) {
+          if (gridState[row][col] === null) {
+            for (let above = row - 1; above >= 0; above--) {
+              if (gridState[above][col] !== null) {
+                gridState[row][col] = gridState[above][col];
+                gridState[above][col] = null;
+                break;
+              }
+            }
+            if (gridState[row][col] === null) {
+              gridState[row][col] = dropTypes[Math.floor(Math.random() * dropTypes.length)];
+            }
+          }
+        }
+      }
+
+      renderGrid();
+    }
   </script>
 </body>
 </html>
