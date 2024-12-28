@@ -19,12 +19,15 @@
       text-align: center;
     }
     #game-board {
+      width: 320px;
+      height: 400px;
+      overflow: auto; /* スクロール可能にする */
       display: grid;
       grid-template-columns: repeat(6, 50px); /* 6列 */
       grid-template-rows: repeat(5, 50px);   /* 5行 */
       gap: 5px;
-      margin-top: 20px;
       position: relative;
+      margin-top: 20px;
     }
     .drop {
       width: 50px;
@@ -205,42 +208,23 @@
       // マッチしたドロップを消して、新しいドロップを下から落とす
       if (matchedDrops.length > 0) {
         matchedDrops.forEach(drop => drop.remove());
-        updateEnemyHealth();
-        createNewDrops();
+        fillEmptySpaces();
       }
     }
 
-    // 敵のHPを更新
-    function updateEnemyHealth() {
-      enemyHealth -= 10;
-      enemyHp.style.width = `${enemyHealth}%`;
-      if (enemyHealth <= 0) {
-        alert('敵を倒しました！');
-      }
-    }
-
-    // 新しいドロップを上から追加
-    function createNewDrops() {
-      let dropsArrayUpdated = Array.from(board.children);
-      for (let i = 0; i < 30; i++) {
-        if (!dropsArrayUpdated[i]) {
+    // 空いているスペースに新しいドロップを入れる
+    function fillEmptySpaces() {
+      let dropsArray = Array.from(board.children);
+      for (let i = 0; i < dropsArray.length; i++) {
+        if (!dropsArray[i].dataset.type) {
           const newDrop = document.createElement('div');
           newDrop.classList.add('drop');
           newDrop.dataset.type = types[Math.floor(Math.random() * types.length)];
-          newDrop.setAttribute('draggable', 'true');
-          newDrop.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            startDrag(e);
-          });
-          newDrop.addEventListener('mousedown', (e) => {
-            e.preventDefault();
-            startDrag(e);
-          });
-          board.appendChild(newDrop);
+          newDrop.setAttribute('data-index', i);
+          board.replaceChild(newDrop, dropsArray[i]);
         }
       }
     }
   </script>
-
 </body>
 </html>
