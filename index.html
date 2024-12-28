@@ -36,19 +36,19 @@
     }
     /* 五色のドロップ */
     .drop[data-type="fire"] {
-      background-image: url('火.jpg');
+      background-image: url('fire.jpg');
     }
     .drop[data-type="water"] {
-      background-image: url('水.jpg');
+      background-image: url('water.jpg');
     }
     .drop[data-type="wood"] {
-      background-image: url('木.jpg');
+      background-image: url('wood.jpg');
     }
     .drop[data-type="light"] {
-      background-image: url('光.jpg');
+      background-image: url('light.jpg');
     }
     .drop[data-type="dark"] {
-      background-image: url('闇.jpg');
+      background-image: url('dark.jpg');
     }
     #enemy-hp-bar {
       width: 200px;
@@ -83,6 +83,13 @@
     const enemyHp = document.getElementById('enemy-hp');
     let enemyHealth = 100; // 敵の初期HP
     const types = ['fire', 'water', 'wood', 'light', 'dark']; // ドロップの種類
+    let draggedDrop = null;
+    let startX = 0;
+    let startY = 0;
+    let offsetX = 0;
+    let offsetY = 0;
+    let startIndex = null;
+    let targetIndex = null;
 
     // 初期ドロップを生成
     function createDrops() {
@@ -95,6 +102,10 @@
           e.preventDefault();
           startDrag(e);
         });
+        drop.addEventListener('mousedown', (e) => {
+          e.preventDefault();
+          startDrag(e);
+        });
         board.appendChild(drop);
       }
     }
@@ -102,26 +113,23 @@
     createDrops();
 
     // ドロップをタッチする開始時の処理
-    let draggedDrop = null;
-    let startX = 0;
-    let startY = 0;
-    let offsetX = 0;
-    let offsetY = 0;
-
     function startDrag(e) {
       draggedDrop = e.target;
-      startX = e.touches[0].clientX;
-      startY = e.touches[0].clientY;
+      startIndex = parseInt(draggedDrop.getAttribute('data-index'));
+      startX = e.touches ? e.touches[0].clientX : e.clientX;
+      startY = e.touches ? e.touches[0].clientY : e.clientY;
       offsetX = draggedDrop.getBoundingClientRect().left - startX;
       offsetY = draggedDrop.getBoundingClientRect().top - startY;
       document.addEventListener('touchmove', onDragMove);
       document.addEventListener('touchend', onDragEnd);
+      document.addEventListener('mousemove', onDragMove);
+      document.addEventListener('mouseup', onDragEnd);
     }
 
     // ドラッグ中の処理
     function onDragMove(e) {
-      const x = e.touches[0].clientX + offsetX;
-      const y = e.touches[0].clientY + offsetY;
+      const x = e.touches ? e.touches[0].clientX + offsetX : e.clientX + offsetX;
+      const y = e.touches ? e.touches[0].clientY + offsetY : e.clientY + offsetY;
       draggedDrop.style.position = 'absolute';
       draggedDrop.style.left = `${x}px`;
       draggedDrop.style.top = `${y}px`;
@@ -131,15 +139,14 @@
     function onDragEnd(e) {
       document.removeEventListener('touchmove', onDragMove);
       document.removeEventListener('touchend', onDragEnd);
+      document.removeEventListener('mousemove', onDragMove);
+      document.removeEventListener('mouseup', onDragEnd);
 
-      // ドロップ先がある場合、その位置にドロップを戻す
-      const targetDrop = document.elementFromPoint(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
-      if (targetDrop && targetDrop.classList.contains('drop') && targetDrop !== draggedDrop) {
-        const targetType = targetDrop.dataset.type;
-        targetDrop.dataset.type = draggedDrop.dataset.type;
-        draggedDrop.dataset.type = targetType;
-
-        // 揃い判定とダメージ処理
+      // ドロップ先のインデックスを取得
+      targetIndex = getTargetIndex(e);
+      if (targetIndex !== null && targetIndex !== startIndex) {
+        // ドロップを交換
+        swapDrops(startIndex, targetIndex);
         checkMatches();
       }
 
@@ -149,26 +156,24 @@
       draggedDrop.style.top = '';
     }
 
-    // ドロップをドラッグできるようにする
-    board.addEventListener('dragover', (e) => {
-      e.preventDefault();
-    });
+    // ドロップ先インデックスを取得
+    function getTargetIndex(e) {
+      const x = e.touches ? e.touches[0].clientX : e.clientX;
+      const y = e.touches ? e.touches[0].clientY : e.clientY;
+      const targetDrop = document.elementFromPoint(x, y);
+      return targetDrop && targetDrop.classList.contains('drop') ? parseInt(targetDrop.getAttribute('data-index')) : null;
+    }
 
-    board.addEventListener('drop', (e) => {
-      e.preventDefault();
-      const targetDrop = e.target;
-      const draggedType = e.dataTransfer.getData('text/plain');
+    // ドロップを交換する
+    function swapDrops(index1, index2) {
+      const drop1 = board.children[index1];
+      const drop2 = board.children[index2];
+      const tempType = drop1.dataset.type;
+      drop1.dataset.type = drop2.dataset.type;
+      drop2.dataset.type = tempType;
+    }
 
-      if (targetDrop.classList.contains('drop') && targetDrop !== e.target) {
-        const temp = targetDrop.dataset.type;
-        targetDrop.dataset.type = draggedType;
-        e.target.dataset.type = temp;
-
-        // 揃い判定とダメージ処理
-        checkMatches();
-      }
-    });
-
+    // 揃い判定とドロップの消去
     function checkMatches() {
       let dropsArray = Array.from(board.children);
       let matchedDrops = [];
@@ -178,7 +183,6 @@
         for (let j = 0; j < 6; j++) {
           const drop = dropsArray[i * 6 + j];
           const type = drop.dataset.type;
-
           if (j < 4 && dropsArray[i * 6 + j + 1].dataset.type === type &&
               dropsArray[i * 6 + j + 2].dataset.type === type) {
             matchedDrops.push(drop, dropsArray[i * 6 + j + 1], dropsArray[i * 6 + j + 2]);
@@ -191,7 +195,6 @@
         for (let j = 0; j < 4; j++) {
           const drop = dropsArray[j * 6 + i];
           const type = drop.dataset.type;
-
           if (dropsArray[(j + 1) * 6 + i].dataset.type === type &&
               dropsArray[(j + 2) * 6 + i].dataset.type === type) {
             matchedDrops.push(drop, dropsArray[(j + 1) * 6 + i], dropsArray[(j + 2) * 6 + i]);
@@ -201,29 +204,39 @@
 
       // マッチしたドロップを消して、新しいドロップを下から落とす
       if (matchedDrops.length > 0) {
-        // ダメージ処理
-        enemyHealth -= 10;
-        enemyHp.style.width = `${enemyHealth}%`;
-        if (enemyHealth <= 0) {
-          alert('敵を倒しました！');
-        }
-
         matchedDrops.forEach(drop => drop.remove());
+        updateEnemyHealth();
+        createNewDrops();
+      }
+    }
 
-        // 新しいドロップを下から追加
-        let dropsArrayUpdated = Array.from(board.children);
-        for (let i = 0; i < 30; i++) {
-          if (!dropsArrayUpdated[i]) {
-            const newDrop = document.createElement('div');
-            newDrop.classList.add('drop');
-            newDrop.dataset.type = types[Math.floor(Math.random() * types.length)];
-            newDrop.setAttribute('draggable', 'true');
-            newDrop.addEventListener('touchstart', (e) => {
-              e.preventDefault();
-              startDrag(e);
-            });
-            board.appendChild(newDrop);
-          }
+    // 敵のHPを更新
+    function updateEnemyHealth() {
+      enemyHealth -= 10;
+      enemyHp.style.width = `${enemyHealth}%`;
+      if (enemyHealth <= 0) {
+        alert('敵を倒しました！');
+      }
+    }
+
+    // 新しいドロップを上から追加
+    function createNewDrops() {
+      let dropsArrayUpdated = Array.from(board.children);
+      for (let i = 0; i < 30; i++) {
+        if (!dropsArrayUpdated[i]) {
+          const newDrop = document.createElement('div');
+          newDrop.classList.add('drop');
+          newDrop.dataset.type = types[Math.floor(Math.random() * types.length)];
+          newDrop.setAttribute('draggable', 'true');
+          newDrop.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            startDrag(e);
+          });
+          newDrop.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            startDrag(e);
+          });
+          board.appendChild(newDrop);
         }
       }
     }
