@@ -23,6 +23,7 @@
       background-size: cover;
       border-radius: 5px;
       cursor: pointer;
+      position: absolute;
     }
 
     .drop[data-type="fire"] {
@@ -72,6 +73,8 @@
           drop.dataset.type = type;
           drop.dataset.row = rowIndex;
           drop.dataset.col = colIndex;
+          drop.style.top = `${rowIndex * 55}px`; // 高さ調整
+          drop.style.left = `${colIndex * 55}px`; // 横位置調整
           grid.appendChild(drop);
         });
       });
@@ -87,23 +90,41 @@
       if (e.target.classList.contains("drop")) {
         selectedDrop = e.target;
         isDragging = true;
+        selectedDrop.style.zIndex = 1000; // ドロップを最前面に
+        selectedDrop.classList.add("dragging");
+      }
+    });
+
+    // ドラッグ中に移動
+    grid.addEventListener("mousemove", (e) => {
+      if (isDragging && selectedDrop) {
+        const gridRect = grid.getBoundingClientRect();
+        const mouseX = e.clientX - gridRect.left - 25; // ドロップの中央位置調整
+        const mouseY = e.clientY - gridRect.top - 25;
+        selectedDrop.style.left = `${mouseX}px`;
+        selectedDrop.style.top = `${mouseY}px`;
       }
     });
 
     // ドラッグ終了
     grid.addEventListener("mouseup", (e) => {
-      if (isDragging && selectedDrop && e.target.classList.contains("drop")) {
-        const targetDrop = e.target;
+      if (isDragging && selectedDrop) {
+        const gridRect = grid.getBoundingClientRect();
+        const mouseX = e.clientX - gridRect.left;
+        const mouseY = e.clientY - gridRect.top;
 
-        // 選択されたドロップとターゲットドロップの位置を取得
-        const selectedRow = parseInt(selectedDrop.dataset.row, 10);
-        const selectedCol = parseInt(selectedDrop.dataset.col, 10);
-        const targetRow = parseInt(targetDrop.dataset.row, 10);
-        const targetCol = parseInt(targetDrop.dataset.col, 10);
+        // ドロップがどこに収まるかを計算
+        const targetCol = Math.floor(mouseX / 55);
+        const targetRow = Math.floor(mouseY / 55);
 
-        // ドロップの移動処理
-        if (Math.abs(selectedRow - targetRow) <= 1 && Math.abs(selectedCol - targetCol) <= 1) {
-          moveDrop(selectedRow, selectedCol, targetRow, targetCol);
+        // ドロップをグリッドの範囲内にスナップ
+        if (targetCol >= 0 && targetCol < gridCols && targetRow >= 0 && targetRow < gridRows) {
+          moveDrop(
+            parseInt(selectedDrop.dataset.row, 10),
+            parseInt(selectedDrop.dataset.col, 10),
+            targetRow,
+            targetCol
+          );
         }
 
         // グリッドを再描画
@@ -119,7 +140,6 @@
 
     // ドロップを移動する関数
     function moveDrop(fromRow, fromCol, toRow, toCol) {
-      // ドロップをスライドさせる
       const temp = gridState[fromRow][fromCol];
       gridState[fromRow][fromCol] = gridState[toRow][toCol];
       gridState[toRow][toCol] = temp;
