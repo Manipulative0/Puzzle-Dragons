@@ -102,8 +102,13 @@
         const gridRect = grid.getBoundingClientRect();
         const mouseX = e.clientX - gridRect.left - 25; // ドロップの中央位置調整
         const mouseY = e.clientY - gridRect.top - 25;
-        selectedDrop.style.left = `${mouseX}px`;
-        selectedDrop.style.top = `${mouseY}px`;
+
+        // グリッド内に制限
+        const maxX = gridRect.width - 50;
+        const maxY = gridRect.height - 50;
+
+        selectedDrop.style.left = `${Math.min(Math.max(mouseX, 0), maxX)}px`;
+        selectedDrop.style.top = `${Math.min(Math.max(mouseY, 0), maxY)}px`;
       }
     });
 
