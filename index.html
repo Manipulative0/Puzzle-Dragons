@@ -3,157 +3,145 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>パズドラ風ゲーム</title>
+  <title>6x5 ドロップゲーム</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background-color: #f4f4f4;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      flex-direction: column;
-      height: 100vh;
-      margin: 0;
-      overflow: hidden; /* スクロールを防ぐ */
-    }
-    #enemy {
-      text-align: center;
-    }
-    #game-board {
-      width: 320px;
-      height: 270px; /* 高さを固定 */
+    /* グリッド設定 */
+    #grid {
       display: grid;
-      grid-template-columns: repeat(6, 50px); /* 6列 */
-      grid-template-rows: repeat(5, 50px);   /* 5行 */
-      gap: 5px;
+      grid-template-columns: repeat(6, 50px); /* 6列、1セル50px */
+      grid-template-rows: repeat(5, 50px); /* 5行、1セル50px */
+      gap: 5px; /* セル間の隙間 */
+      width: 320px; /* 6x50 + 隙間で幅 */
+      height: 270px; /* 5x50 + 隙間で高さ */
+      border: 2px solid #000;
       position: relative;
-      margin-top: 20px;
+      overflow: hidden; /* グリッド外にはみ出さないように設定 */
+      margin: 20px auto;
     }
+
+    /* ドロップの設定 */
     .drop {
       width: 50px;
       height: 50px;
+      position: absolute;
       background-size: cover;
-      cursor: pointer;
+      touch-action: none; /* タッチデバイスで動作 */
       border-radius: 5px;
-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-      position: relative;
+      cursor: grab;
     }
-    /* 五色のドロップ */
- /* ドロップの種類に対応する背景画像 */
-.drop[data-type="fire"] {
-  background-image: url('火.jpg'); /* 火ドロップの画像 */
-  background-size: cover;
-}
 
-.drop[data-type="water"] {
-  background-image: url('水.jpg'); /* 水ドロップの画像 */
-  background-size: cover;
-}
-
-.drop[data-type="wood"] {
-  background-image: url('木.jpg'); /* 木ドロップの画像 */
-  background-size: cover;
-}
-
-.drop[data-type="light"] {
-  background-image: url('光.jpg'); /* 光ドロップの画像 */
-  background-size: cover;
-}
-
-.drop[data-type="dark"] {
-  background-image: url('闇.jpg'); /* 闇ドロップの画像 */
-  background-size: cover;
-}
-
-    #enemy-hp-bar {
-      width: 200px;
-      height: 20px;
-      background-color: gray;
-      margin-top: 20px;
-      border-radius: 10px;
+    .drop[data-type="fire"] {
+      background-image: url('火.jpg');
     }
-    #enemy-hp {
-      width: 100%;
-      height: 100%;
-      background-color: red;
-      border-radius: 10px;
+
+    .drop[data-type="water"] {
+      background-image: url('水.jpg');
+    }
+
+    .drop[data-type="wood"] {
+      background-image: url('木.jpg');
+    }
+
+    .drop[data-type="light"] {
+      background-image: url('光.jpg');
+    }
+
+    .drop[data-type="dark"] {
+      background-image: url('闇.jpg');
     }
   </style>
 </head>
 <body>
-
-  <div id="enemy">
-    <h3>敵のHP</h3>
-    <div id="enemy-hp-bar">
-      <div id="enemy-hp"></div>
-    </div>
-  </div>
-
-  <div id="game-board">
-    <!-- ドロップを動的に生成 -->
+  <div id="grid">
+    <!-- ドロップを生成 -->
+    <div class="drop" data-type="fire" style="left: 0px; top: 0px;"></div>
+    <div class="drop" data-type="water" style="left: 50px; top: 0px;"></div>
+    <div class="drop" data-type="wood" style="left: 100px; top: 0px;"></div>
+    <div class="drop" data-type="light" style="left: 150px; top: 0px;"></div>
+    <div class="drop" data-type="dark" style="left: 200px; top: 0px;"></div>
+    <!-- 必要数だけ上記を繰り返し -->
   </div>
 
   <script>
-    const board = document.getElementById('game-board');
-    const enemyHp = document.getElementById('enemy-hp');
-    let enemyHealth = 100; // 敵の初期HP
-    const types = ['fire', 'water', 'wood', 'light', 'dark']; // ドロップの種類
-    let draggedDrop = null;
-    let startX = 0;
-    let startY = 0;
-    let offsetX = 0;
-    let offsetY = 0;
-    let startIndex = null;
+    const grid = document.getElementById("grid");
+    const drops = document.querySelectorAll(".drop");
 
-    // 初期ドロップを生成
-    function createDrops() {
-      for (let i = 0; i < 30; i++) {
-        const drop = document.createElement('div');
-        drop.classList.add('drop');
-        drop.dataset.type = types[Math.floor(Math.random() * types.length)];
-        drop.setAttribute('data-index', i);  // インデックスを設定
-        drop.addEventListener('touchstart', startDrag);
-        drop.addEventListener('mousedown', startDrag);
-        board.appendChild(drop);
+    let selectedDrop = null; // 選択されたドロップ
+    let startX, startY, offsetX, offsetY;
+
+    // ドロップをドラッグ開始
+    drops.forEach((drop) => {
+      drop.addEventListener("pointerdown", (e) => {
+        selectedDrop = e.target;
+        startX = e.clientX;
+        startY = e.clientY;
+        offsetX = selectedDrop.offsetLeft;
+        offsetY = selectedDrop.offsetTop;
+        selectedDrop.style.cursor = "grabbing";
+      });
+    });
+
+    // ドロップをドラッグ中
+    grid.addEventListener("pointermove", (e) => {
+      if (!selectedDrop) return;
+
+      // 新しい位置を計算
+      const moveX = e.clientX - startX + offsetX;
+      const moveY = e.clientY - startY + offsetY;
+
+      // グリッド内に位置を制限
+      const gridRect = grid.getBoundingClientRect();
+      const minX = 0;
+      const minY = 0;
+      const maxX = gridRect.width - selectedDrop.offsetWidth;
+      const maxY = gridRect.height - selectedDrop.offsetHeight;
+
+      selectedDrop.style.left = Math.max(minX, Math.min(maxX, moveX)) + "px";
+      selectedDrop.style.top = Math.max(minY, Math.min(maxY, moveY)) + "px";
+    });
+
+    // ドロップをドラッグ終了
+    grid.addEventListener("pointerup", () => {
+      if (!selectedDrop) return;
+      selectedDrop.style.cursor = "grab";
+
+      // グリッド位置にスナップする
+      const x = Math.round(selectedDrop.offsetLeft / 50) * 50;
+      const y = Math.round(selectedDrop.offsetTop / 50) * 50;
+
+      selectedDrop.style.left = `${x}px`;
+      selectedDrop.style.top = `${y}px`;
+
+      selectedDrop = null;
+
+      // コンボ判定をここに追加
+      checkCombos();
+    });
+
+    // コンボを判定する関数
+    function checkCombos() {
+      const positions = Array.from(drops).map((drop) => ({
+        type: drop.getAttribute("data-type"),
+        x: Math.round(drop.offsetLeft / 50),
+        y: Math.round(drop.offsetTop / 50),
+      }));
+
+      // 水平と垂直で一致する3つ以上のドロップをチェック
+      const combos = findCombos(positions);
+
+      // コンボが見つかった場合の処理
+      if (combos.length > 0) {
+        console.log("コンボ成立:", combos);
+        // コンボ成立エフェクトや処理をここに記述
       }
     }
 
-    createDrops();
-
-    // ドロップをタッチする開始時の処理
-    function startDrag(e) {
-      draggedDrop = e.target;
-      startIndex = parseInt(draggedDrop.getAttribute('data-index'));
-      startX = e.touches ? e.touches[0].clientX : e.clientX;
-      startY = e.touches ? e.touches[0].clientY : e.clientY;
-      offsetX = draggedDrop.getBoundingClientRect().left - startX;
-      offsetY = draggedDrop.getBoundingClientRect().top - startY;
-      document.addEventListener('touchmove', onDragMove);
-      document.addEventListener('touchend', onDragEnd);
-      document.addEventListener('mousemove', onDragMove);
-      document.addEventListener('mouseup', onDragEnd);
-    }
-
-    // ドラッグ中の処理
-    function onDragMove(e) {
-      const x = e.touches ? e.touches[0].clientX + offsetX : e.clientX + offsetX;
-      const y = e.touches ? e.touches[0].clientY + offsetY : e.clientY + offsetY;
-      draggedDrop.style.position = 'absolute';
-      draggedDrop.style.left = `${x}px`;
-      draggedDrop.style.top = `${y}px`;
-    }
-
-    // ドラッグ終了時の処理
-    function onDragEnd(e) {
-      document.removeEventListener('touchmove', onDragMove);
-      document.removeEventListener('touchend', onDragEnd);
-      document.removeEventListener('mousemove', onDragMove);
-      document.removeEventListener('mouseup', onDragEnd);
-
-      // ドロップを元の位置に戻す
-      draggedDrop.style.position = '';
-      draggedDrop.style.left = '';
-      draggedDrop.style.top = '';
+    // コンボを見つける
+    function findCombos(positions) {
+      const combos = [];
+      // 水平または垂直方向で同じ種類が3つ以上揃ったものを判定
+      // このロジックは詳細実装が必要
+      return combos;
     }
   </script>
 </body>
