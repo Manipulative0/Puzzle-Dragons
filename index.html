@@ -24,6 +24,9 @@
       grid-template-rows: repeat(5, 60px);   /* 5行 */
       gap: 5px;
       margin-top: 20px;
+      width: 380px; /* スクロールしやすいようにサイズ調整 */
+      overflow: hidden;
+      position: relative;
     }
     .drop {
       width: 60px;
@@ -34,21 +37,20 @@
       box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
       position: relative;
     }
-    /* 五色のドロップ */
     .drop[data-type="fire"] {
-      background-image: url('火.jpg'); /* 火のドロップ画像 */
+      background-image: url('fire.jpg'); /* 火のドロップ画像 */
     }
     .drop[data-type="water"] {
-      background-image: url('水.jpg'); /* 水のドロップ画像 */
+      background-image: url('water.jpg'); /* 水のドロップ画像 */
     }
     .drop[data-type="wood"] {
-      background-image: url('木.jpg'); /* 木のドロップ画像 */
+      background-image: url('wood.jpg'); /* 木のドロップ画像 */
     }
     .drop[data-type="light"] {
-      background-image: url('光.jpg'); /* 光のドロップ画像 */
+      background-image: url('light.jpg'); /* 光のドロップ画像 */
     }
     .drop[data-type="dark"] {
-      background-image: url('闇.jpg'); /* 闇のドロップ画像 */
+      background-image: url('dark.jpg'); /* 闇のドロップ画像 */
     }
     #enemy-hp-bar {
       width: 200px;
@@ -75,6 +77,17 @@
   </div>
 
   <div id="game-board">
+    <!-- 30個のドロップ -->
+    <div class="drop" data-type="fire" draggable="true"></div>
+    <div class="drop" data-type="water" draggable="true"></div>
+    <div class="drop" data-type="wood" draggable="true"></div>
+    <div class="drop" data-type="light" draggable="true"></div>
+    <div class="drop" data-type="dark" draggable="true"></div>
+    <div class="drop" data-type="fire" draggable="true"></div>
+    <div class="drop" data-type="water" draggable="true"></div>
+    <div class="drop" data-type="wood" draggable="true"></div>
+    <div class="drop" data-type="light" draggable="true"></div>
+    <div class="drop" data-type="dark" draggable="true"></div>
     <div class="drop" data-type="fire" draggable="true"></div>
     <div class="drop" data-type="water" draggable="true"></div>
     <div class="drop" data-type="wood" draggable="true"></div>
@@ -128,6 +141,28 @@
         }
       });
     });
+
+    // スクロールしてドロップを並べ替え
+    board.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      if (e.deltaY > 0) {
+        scrollBoard('down');
+      } else {
+        scrollBoard('up');
+      }
+    });
+
+    // スクロールで位置を変える
+    function scrollBoard(direction) {
+      const firstDrop = board.firstElementChild;
+      const lastDrop = board.lastElementChild;
+      
+      if (direction === 'down') {
+        board.appendChild(firstDrop); // 最初のドロップを最後に移動
+      } else {
+        board.insertBefore(lastDrop, firstDrop); // 最後のドロップを最初に移動
+      }
+    }
 
     // タッチイベントの処理（スマートフォン対応）
     board.addEventListener('touchstart', (e) => {
