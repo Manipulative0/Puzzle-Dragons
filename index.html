@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>パズルゲーム</title>
   <style>
-    /* グリッド設定 */
     #grid {
       display: grid;
       grid-template-columns: repeat(6, 50px); /* 6列 */
@@ -21,10 +20,9 @@
       width: 50px;
       height: 50px;
       background-size: cover;
-      border-radius: 5px;
-      cursor: pointer;
       position: absolute;
-      transition: top 0.3s ease-in-out; /* 落ちるアニメーション */
+      cursor: grab;
+      transition: transform 0.2s ease; /* スムーズなアニメーション */
     }
 
     .drop[data-type="fire"] {
@@ -57,16 +55,16 @@
     const dropTypes = ["fire", "water", "wood", "light", "dark"];
     const grid = document.getElementById("grid");
 
-    // グリッド状態を保持する2次元配列
-    const gridState = Array.from({ length: gridRows }, () =>
-      Array.from({ length: gridCols }, () =>
-        dropTypes[Math.floor(Math.random() * dropTypes.length)]
-      )
+    let gridState = Array.from({ length: gridRows }, () =>
+      Array.from({ length: gridCols }, () => dropTypes[Math.floor(Math.random() * dropTypes.length)])
     );
 
-    // グリッド描画
+    let isDragging = false;
+    let draggedElement = null;
+    let startX, startY, startLeft, startTop;
+
     function renderGrid() {
-      grid.innerHTML = ""; // グリッドをリセット
+      grid.innerHTML = "";
       gridState.forEach((row, rowIndex) => {
         row.forEach((type, colIndex) => {
           const drop = document.createElement("div");
@@ -74,8 +72,8 @@
           drop.dataset.type = type;
           drop.dataset.row = rowIndex;
           drop.dataset.col = colIndex;
-          drop.style.top = `${rowIndex * 55}px`; // 高さ調整
-          drop.style.left = `${colIndex * 55}px`; // 横位置調整
+          drop.style.left = `${colIndex * 55}px`;
+          drop.style.top = `${rowIndex * 55}px`;
           grid.appendChild(drop);
         });
       });
@@ -83,156 +81,78 @@
 
     renderGrid();
 
-    let selectedDrop = null;
-    let isDragging = false;
-
-    // ドラッグ開始
     grid.addEventListener("mousedown", (e) => {
       if (e.target.classList.contains("drop")) {
-        selectedDrop = e.target;
         isDragging = true;
-        selectedDrop.style.zIndex = 1000; // ドロップを最前面に
-        selectedDrop.classList.add("dragging");
+        draggedElement = e.target;
+        startX = e.clientX;
+        startY = e.clientY;
+        startLeft = parseInt(draggedElement.style.left);
+        startTop = parseInt(draggedElement.style.top);
+        draggedElement.style.zIndex = 1000;
       }
     });
 
-    // ドラッグ中に移動
     grid.addEventListener("mousemove", (e) => {
-      if (isDragging && selectedDrop) {
-        const gridRect = grid.getBoundingClientRect();
-        const mouseX = e.clientX - gridRect.left - 25; // ドロップの中央位置調整
-        const mouseY = e.clientY - gridRect.top - 25;
-
-        // グリッド内に制限
-        const maxX = gridRect.width - 50;
-        const maxY = gridRect.height - 50;
-
-        selectedDrop.style.left = `${Math.min(Math.max(mouseX, 0), maxX)}px`;
-        selectedDrop.style.top = `${Math.min(Math.max(mouseY, 0), maxY)}px`;
+      if (isDragging && draggedElement) {
+        const deltaX = e.clientX - startX;
+        const deltaY = e.clientY - startY;
+        draggedElement.style.left = `${startLeft + deltaX}px`;
+        draggedElement.style.top = `${startTop + deltaY}px`;
       }
     });
 
-    // ドラッグ終了
     grid.addEventListener("mouseup", (e) => {
-      if (isDragging && selectedDrop) {
+      if (isDragging && draggedElement) {
         const gridRect = grid.getBoundingClientRect();
         const mouseX = e.clientX - gridRect.left;
         const mouseY = e.clientY - gridRect.top;
 
-        // ドロップがどこに収まるかを計算
         const targetCol = Math.floor(mouseX / 55);
         const targetRow = Math.floor(mouseY / 55);
 
-        // ドロップをグリッドの範囲内にスナップ
-        if (targetCol >= 0 && targetCol < gridCols && targetRow >= 0 && targetRow < gridRows) {
-          moveDrop(
-            parseInt(selectedDrop.dataset.row, 10),
-            parseInt(selectedDrop.dataset.col, 10),
-            targetRow,
-            targetCol
-          );
+        if (
+          targetCol >= 0 &&
+          targetCol < gridCols &&
+          targetRow >= 0 &&
+          targetRow < gridRows
+        ) {
+          const fromRow = parseInt(draggedElement.dataset.row);
+          const fromCol = parseInt(draggedElement.dataset.col);
+
+          // スワップ処理
+          const temp = gridState[fromRow][fromCol];
+          gridState[fromRow][fromCol] = gridState[targetRow][targetCol];
+          gridState[targetRow][targetCol] = temp;
+
+          // 新しい位置にスナップ
+          draggedElement.dataset.row = targetRow;
+          draggedElement.dataset.col = targetCol;
+          draggedElement.style.left = `${targetCol * 55}px`;
+          draggedElement.style.top = `${targetRow * 55}px`;
+        } else {
+          // 元の位置に戻す
+          draggedElement.style.left = `${startLeft}px`;
+          draggedElement.style.top = `${startTop}px`;
         }
 
-        // グリッドを再描画
-        renderGrid();
-
-        selectedDrop = null;
+        draggedElement.style.zIndex = "";
         isDragging = false;
+        draggedElement = null;
       }
     });
 
-    // ドロップを移動する関数
-    function moveDrop(fromRow, fromCol, toRow, toCol) {
-      const temp = gridState[fromRow][fromCol];
-      gridState[fromRow][fromCol] = gridState[toRow][toCol];
-      gridState[toRow][toCol] = temp;
-    }
-
-    // 3つ以上並んだドロップを探して削除
-    function checkAndClearMatches() {
-      const toClear = [];
-
-      // 横方向のチェック
-      for (let row = 0; row < gridRows; row++) {
-        let matchCount = 1;
-        for (let col = 1; col < gridCols; col++) {
-          if (gridState[row][col] === gridState[row][col - 1]) {
-            matchCount++;
-            if (matchCount >= 3 && col === gridCols - 1) {
-              toClear.push([row, col - 2], [row, col - 1], [row, col]);
-            }
-          } else {
-            if (matchCount >= 3) {
-              for (let i = 1; i <= matchCount; i++) {
-                toClear.push([row, col - i]);
-              }
-            }
-            matchCount = 1;
-          }
+    document.addEventListener("mouseup", () => {
+      // マウスが外で離れた場合の安全対策
+      if (isDragging) {
+        if (draggedElement) {
+          draggedElement.style.left = `${startLeft}px`;
+          draggedElement.style.top = `${startTop}px`;
         }
+        isDragging = false;
+        draggedElement = null;
       }
-
-      // 縦方向のチェック
-      for (let col = 0; col < gridCols; col++) {
-        let matchCount = 1;
-        for (let row = 1; row < gridRows; row++) {
-          if (gridState[row][col] === gridState[row - 1][col]) {
-            matchCount++;
-            if (matchCount >= 3 && row === gridRows - 1) {
-              toClear.push([row - 2, col], [row - 1, col], [row, col]);
-            }
-          } else {
-            if (matchCount >= 3) {
-              for (let i = 1; i <= matchCount; i++) {
-                toClear.push([row - i, col]);
-              }
-            }
-            matchCount = 1;
-          }
-        }
-      }
-
-      // ドロップを削除
-      toClear.forEach(([row, col]) => {
-        gridState[row][col] = null;
-      });
-
-      // ドロップを下に落とし、新しいドロップを生成
-      for (let col = 0; col < gridCols; col++) {
-        for (let row = gridRows - 1; row >= 0; row--) {
-          if (gridState[row][col] === null) {
-            for (let above = row - 1; above >= 0; above--) {
-              if (gridState[above][col] !== null) {
-                gridState[row][col] = gridState[above][col];
-                gridState[above][col] = null;
-                break;
-              }
-            }
-          }
-        }
-      }
-
-      // 新しいドロップを落とす
-      addNewDrops();
-    }
-
-    // 新しいドロップを追加する関数
-    function addNewDrops() {
-      for (let col = 0; col < gridCols; col++) {
-        for (let row = gridRows - 1; row >= 0; row--) {
-          if (gridState[row][col] === null) {
-            gridState[row][col] = dropTypes[Math.floor(Math.random() * dropTypes.length)];
-          }
-        }
-      }
-
-      renderGrid();
-    }
-
-    // 最初にドロップが落ちる処理を追加
-    setInterval(() => {
-      checkAndClearMatches();
-    }, 1000); // 1秒ごとに落ちる動作をチェック
+    });
   </script>
 </body>
 </html>
