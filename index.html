@@ -129,7 +129,7 @@
 
     function checkCombos() {
       const toRemove = new Set();
-      const comboColors = new Set();
+      let comboCount = 0;
 
       // Check rows for combos
       for (let row = 0; row < gridRows; row++) {
@@ -139,12 +139,12 @@
             count++;
             if (count >= 3 && col === gridCols - 1) {
               for (let k = 0; k < count; k++) toRemove.add(`${row},${col - k}`);
-              comboColors.add(gridState[row][col]);
+              comboCount++;
             }
           } else {
             if (count >= 3) {
               for (let k = 0; k < count; k++) toRemove.add(`${row},${col - 1 - k}`);
-              comboColors.add(gridState[row][col - 1]);
+              comboCount++;
             }
             count = 1;
           }
@@ -159,12 +159,12 @@
             count++;
             if (count >= 3 && row === gridRows - 1) {
               for (let k = 0; k < count; k++) toRemove.add(`${row - k},${col}`);
-              comboColors.add(gridState[row][col]);
+              comboCount++;
             }
           } else {
             if (count >= 3) {
               for (let k = 0; k < count; k++) toRemove.add(`${row - 1 - k},${col}`);
-              comboColors.add(gridState[row - 1][col]);
+              comboCount++;
             }
             count = 1;
           }
@@ -172,7 +172,7 @@
       }
 
       if (toRemove.size > 0) {
-        comboDisplay.textContent = comboColors.size;
+        comboDisplay.textContent = comboCount;
 
         toRemove.forEach((key) => {
           const [row, col] = key.split(",").map(Number);
@@ -213,11 +213,6 @@
       }
 
       renderGrid();
-
-      // After applying gravity, check for new combos (落ちコンボ)
-      setTimeout(() => {
-        checkCombos();
-      }, 300);
     }
 
     grid.addEventListener("mousedown", startDrag);
