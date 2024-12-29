@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>パズドラ風ドロップ移動とコンボ表示</title>
+  <title>パズドラ風ドロップ操作</title>
   <style>
     body {
       display: flex;
@@ -83,7 +83,6 @@
     let isDragging = false;
     let draggedElement = null;
     let startRow, startCol;
-    let comboCount = 0;
 
     function renderGrid() {
       grid.innerHTML = "";
@@ -111,6 +110,7 @@
 
     function checkCombos() {
       const toRemove = new Set();
+      const comboColors = new Set();
 
       // Check rows for combos
       for (let row = 0; row < gridRows; row++) {
@@ -120,10 +120,12 @@
             count++;
             if (count >= 3 && col === gridCols - 1) {
               for (let k = 0; k < count; k++) toRemove.add(`${row},${col - k}`);
+              comboColors.add(gridState[row][col]);
             }
           } else {
             if (count >= 3) {
               for (let k = 0; k < count; k++) toRemove.add(`${row},${col - 1 - k}`);
+              comboColors.add(gridState[row][col - 1]);
             }
             count = 1;
           }
@@ -138,10 +140,12 @@
             count++;
             if (count >= 3 && row === gridRows - 1) {
               for (let k = 0; k < count; k++) toRemove.add(`${row - k},${col}`);
+              comboColors.add(gridState[row][col]);
             }
           } else {
             if (count >= 3) {
               for (let k = 0; k < count; k++) toRemove.add(`${row - 1 - k},${col}`);
+              comboColors.add(gridState[row - 1][col]);
             }
             count = 1;
           }
@@ -149,8 +153,7 @@
       }
 
       if (toRemove.size > 0) {
-        comboCount++;
-        comboDisplay.textContent = comboCount;
+        comboDisplay.textContent = comboColors.size;
 
         toRemove.forEach((key) => {
           const [row, col] = key.split(",").map(Number);
@@ -161,6 +164,8 @@
           applyGravity();
           checkCombos();
         }, 500);
+      } else {
+        comboDisplay.textContent = 0; // Reset combo count after no more combos
       }
     }
 
