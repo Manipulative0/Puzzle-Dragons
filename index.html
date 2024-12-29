@@ -96,14 +96,12 @@
     const comboDisplay = document.querySelector(".combo-count");
 
     let gridState = Array.from({ length: gridRows }, () =>
-      Array.from({ length: gridCols }, () => dropTypes[Math.floor(Math.random() * dropTypes.length)])
+      Array.from({ length: gridCols }, () => dropTypes[Math.floor(Math.random() * dropTypes.length)]),
     );
 
     let isDragging = false;
     let draggedElement = null;
     let startRow, startCol;
-
-    let comboCount = 0;
 
     function renderGrid() {
       grid.innerHTML = "";
@@ -132,7 +130,6 @@
     function checkCombos() {
       const toRemove = new Set();
       const comboColors = new Set();
-      let newComboCount = 0;
 
       // Check rows for combos
       for (let row = 0; row < gridRows; row++) {
@@ -143,13 +140,11 @@
             if (count >= 3 && col === gridCols - 1) {
               for (let k = 0; k < count; k++) toRemove.add(`${row},${col - k}`);
               comboColors.add(gridState[row][col]);
-              newComboCount = Math.max(newComboCount, count);
             }
           } else {
             if (count >= 3) {
               for (let k = 0; k < count; k++) toRemove.add(`${row},${col - 1 - k}`);
               comboColors.add(gridState[row][col - 1]);
-              newComboCount = Math.max(newComboCount, count);
             }
             count = 1;
           }
@@ -165,13 +160,11 @@
             if (count >= 3 && row === gridRows - 1) {
               for (let k = 0; k < count; k++) toRemove.add(`${row - k},${col}`);
               comboColors.add(gridState[row][col]);
-              newComboCount = Math.max(newComboCount, count);
             }
           } else {
             if (count >= 3) {
               for (let k = 0; k < count; k++) toRemove.add(`${row - 1 - k},${col}`);
               comboColors.add(gridState[row - 1][col]);
-              newComboCount = Math.max(newComboCount, count);
             }
             count = 1;
           }
@@ -179,9 +172,7 @@
       }
 
       if (toRemove.size > 0) {
-        comboCount += newComboCount > 3 ? 1 : newComboCount;
-
-        comboDisplay.textContent = comboCount;
+        comboDisplay.textContent = comboColors.size;
 
         toRemove.forEach((key) => {
           const [row, col] = key.split(",").map(Number);
@@ -222,6 +213,11 @@
       }
 
       renderGrid();
+
+      // After applying gravity, check for new combos (落ちコンボ)
+      setTimeout(() => {
+        checkCombos();
+      }, 300);
     }
 
     grid.addEventListener("mousedown", startDrag);
