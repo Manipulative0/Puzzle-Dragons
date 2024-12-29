@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>パズルゲーム</title>
+  <title>パズドラ風ドロップ移動</title>
   <style>
     #grid {
       display: grid;
@@ -22,7 +22,7 @@
       background-size: cover;
       position: absolute;
       cursor: grab;
-      transition: transform 0.2s ease; /* スムーズなアニメーション */
+      transition: transform 0.1s ease;
     }
 
     .drop[data-type="fire"] {
@@ -61,7 +61,7 @@
 
     let isDragging = false;
     let draggedElement = null;
-    let startX, startY, startLeft, startTop;
+    let startRow, startCol;
 
     function renderGrid() {
       grid.innerHTML = "";
@@ -81,28 +81,24 @@
 
     renderGrid();
 
+    function swapDrops(fromRow, fromCol, toRow, toCol) {
+      const temp = gridState[fromRow][fromCol];
+      gridState[fromRow][fromCol] = gridState[toRow][toCol];
+      gridState[toRow][toCol] = temp;
+
+      renderGrid();
+    }
+
     grid.addEventListener("mousedown", (e) => {
       if (e.target.classList.contains("drop")) {
         isDragging = true;
         draggedElement = e.target;
-        startX = e.clientX;
-        startY = e.clientY;
-        startLeft = parseInt(draggedElement.style.left);
-        startTop = parseInt(draggedElement.style.top);
-        draggedElement.style.zIndex = 1000;
+        startRow = parseInt(draggedElement.dataset.row);
+        startCol = parseInt(draggedElement.dataset.col);
       }
     });
 
     grid.addEventListener("mousemove", (e) => {
-      if (isDragging && draggedElement) {
-        const deltaX = e.clientX - startX;
-        const deltaY = e.clientY - startY;
-        draggedElement.style.left = `${startLeft + deltaX}px`;
-        draggedElement.style.top = `${startTop + deltaY}px`;
-      }
-    });
-
-    grid.addEventListener("mouseup", (e) => {
       if (isDragging && draggedElement) {
         const gridRect = grid.getBoundingClientRect();
         const mouseX = e.clientX - gridRect.left;
@@ -115,40 +111,18 @@
           targetCol >= 0 &&
           targetCol < gridCols &&
           targetRow >= 0 &&
-          targetRow < gridRows
+          targetRow < gridRows &&
+          (targetRow !== startRow || targetCol !== startCol)
         ) {
-          const fromRow = parseInt(draggedElement.dataset.row);
-          const fromCol = parseInt(draggedElement.dataset.col);
-
-          // スワップ処理
-          const temp = gridState[fromRow][fromCol];
-          gridState[fromRow][fromCol] = gridState[targetRow][targetCol];
-          gridState[targetRow][targetCol] = temp;
-
-          // 新しい位置にスナップ
-          draggedElement.dataset.row = targetRow;
-          draggedElement.dataset.col = targetCol;
-          draggedElement.style.left = `${targetCol * 55}px`;
-          draggedElement.style.top = `${targetRow * 55}px`;
-        } else {
-          // 元の位置に戻す
-          draggedElement.style.left = `${startLeft}px`;
-          draggedElement.style.top = `${startTop}px`;
+          swapDrops(startRow, startCol, targetRow, targetCol);
+          startRow = targetRow;
+          startCol = targetCol;
         }
-
-        draggedElement.style.zIndex = "";
-        isDragging = false;
-        draggedElement = null;
       }
     });
 
-    document.addEventListener("mouseup", () => {
-      // マウスが外で離れた場合の安全対策
+    grid.addEventListener("mouseup", () => {
       if (isDragging) {
-        if (draggedElement) {
-          draggedElement.style.left = `${startLeft}px`;
-          draggedElement.style.top = `${startTop}px`;
-        }
         isDragging = false;
         draggedElement = null;
       }
