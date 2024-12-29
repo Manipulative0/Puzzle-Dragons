@@ -3,15 +3,22 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>パズドラ風ドロップ移動</title>
+  <title>パズドラ風ドロップ移動とコンボ表示</title>
   <style>
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      font-family: Arial, sans-serif;
+    }
+
     #grid {
       display: grid;
-      grid-template-columns: repeat(6, 50px); /* 6列 */
-      grid-template-rows: repeat(5, 50px);   /* 5行 */
+      grid-template-columns: repeat(6, 50px);
+      grid-template-rows: repeat(5, 50px);
       gap: 5px;
       position: relative;
-      margin: 20px auto;
+      margin: 20px;
       width: max-content;
       border: 2px solid #000;
     }
@@ -44,16 +51,30 @@
     .drop[data-type="dark"] {
       background-image: url('闇.jpg');
     }
+
+    #combo-display {
+      margin-left: 20px;
+      font-size: 18px;
+    }
+
+    .combo-count {
+      font-weight: bold;
+      color: #0073e6;
+    }
   </style>
 </head>
 <body>
   <div id="grid"></div>
+  <div id="combo-display">
+    <p>現在のコンボ数: <span class="combo-count">0</span></p>
+  </div>
 
   <script>
     const gridRows = 5;
     const gridCols = 6;
     const dropTypes = ["fire", "water", "wood", "light", "dark"];
     const grid = document.getElementById("grid");
+    const comboDisplay = document.querySelector(".combo-count");
 
     let gridState = Array.from({ length: gridRows }, () =>
       Array.from({ length: gridCols }, () => dropTypes[Math.floor(Math.random() * dropTypes.length)])
@@ -62,6 +83,7 @@
     let isDragging = false;
     let draggedElement = null;
     let startRow, startCol;
+    let comboCount = 0;
 
     function renderGrid() {
       grid.innerHTML = "";
@@ -79,12 +101,92 @@
       });
     }
 
-    renderGrid();
-
     function swapDrops(fromRow, fromCol, toRow, toCol) {
       const temp = gridState[fromRow][fromCol];
       gridState[fromRow][fromCol] = gridState[toRow][toCol];
       gridState[toRow][toCol] = temp;
+
+      renderGrid();
+    }
+
+    function checkCombos() {
+      const toRemove = new Set();
+
+      // Check rows for combos
+      for (let row = 0; row < gridRows; row++) {
+        let count = 1;
+        for (let col = 1; col < gridCols; col++) {
+          if (gridState[row][col] === gridState[row][col - 1]) {
+            count++;
+            if (count >= 3 && col === gridCols - 1) {
+              for (let k = 0; k < count; k++) toRemove.add(`${row},${col - k}`);
+            }
+          } else {
+            if (count >= 3) {
+              for (let k = 0; k < count; k++) toRemove.add(`${row},${col - 1 - k}`);
+            }
+            count = 1;
+          }
+        }
+      }
+
+      // Check columns for combos
+      for (let col = 0; col < gridCols; col++) {
+        let count = 1;
+        for (let row = 1; row < gridRows; row++) {
+          if (gridState[row][col] === gridState[row - 1][col]) {
+            count++;
+            if (count >= 3 && row === gridRows - 1) {
+              for (let k = 0; k < count; k++) toRemove.add(`${row - k},${col}`);
+            }
+          } else {
+            if (count >= 3) {
+              for (let k = 0; k < count; k++) toRemove.add(`${row - 1 - k},${col}`);
+            }
+            count = 1;
+          }
+        }
+      }
+
+      if (toRemove.size > 0) {
+        comboCount++;
+        comboDisplay.textContent = comboCount;
+
+        toRemove.forEach((key) => {
+          const [row, col] = key.split(",").map(Number);
+          gridState[row][col] = null;
+        });
+
+        setTimeout(() => {
+          applyGravity();
+          checkCombos();
+        }, 500);
+      }
+    }
+
+    function applyGravity() {
+      for (let col = 0; col < gridCols; col++) {
+        for (let row = gridRows - 1; row >= 0; row--) {
+          if (gridState[row][col] === null) {
+            for (let k = row - 1; k >= 0; k--) {
+              if (gridState[k][col] !== null) {
+                gridState[row][col] = gridState[k][col];
+                gridState[k][col] = null;
+                break;
+              }
+            }
+          }
+        }
+      }
+
+      // Fill in empty spaces with new drops
+      for (let row = 0; row < gridRows; row++) {
+        for (let col = 0; col < gridCols; col++) {
+          if (gridState[row][col] === null) {
+            gridState[row][col] = dropTypes[Math.floor(Math.random() * dropTypes.length)];
+          }
+        }
+      }
 
       renderGrid();
     }
@@ -125,8 +227,11 @@
       if (isDragging) {
         isDragging = false;
         draggedElement = null;
+        checkCombos();
       }
     });
+
+    renderGrid();
   </script>
 </body>
 </html>
