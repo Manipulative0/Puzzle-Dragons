@@ -33,23 +33,23 @@
     }
 
     .drop[data-type="fire"] {
-      background-color: red;
+      background-image: url('火.jpg');
     }
 
     .drop[data-type="water"] {
-      background-color: blue;
+      background-image: url('水.jpg');
     }
 
     .drop[data-type="wood"] {
-      background-color: green;
+      background-image: url('木.jpg');
     }
 
     .drop[data-type="light"] {
-      background-color: yellow;
+      background-image: url('光.jpg');
     }
 
     .drop[data-type="dark"] {
-      background-color: purple;
+      background-image: url('闇.jpg');
     }
 
     #combo-display {
@@ -83,8 +83,6 @@
     let isDragging = false;
     let draggedElement = null;
     let startRow, startCol;
-
-    let totalCombos = 0;
 
     function renderGrid() {
       grid.innerHTML = "";
@@ -155,8 +153,7 @@
       }
 
       if (toRemove.size > 0) {
-        totalCombos += comboColors.size;
-        comboDisplay.textContent = totalCombos;
+        comboDisplay.textContent = comboColors.size;
 
         toRemove.forEach((key) => {
           const [row, col] = key.split(",").map(Number);
@@ -165,10 +162,10 @@
 
         setTimeout(() => {
           applyGravity();
-          setTimeout(checkCombos, 500);
+          checkCombos();
         }, 500);
       } else {
-        totalCombos = 0; // Reset combo count for next move
+        comboDisplay.textContent = 0; // Reset combo count after no more combos
       }
     }
 
