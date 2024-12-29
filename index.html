@@ -10,6 +10,10 @@
       justify-content: center;
       align-items: flex-start;
       font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      height: 100vh;
+      overflow: hidden;
     }
 
     #grid {
@@ -61,6 +65,18 @@
       font-weight: bold;
       color: #0073e6;
     }
+
+    @media (max-width: 768px) {
+      #grid {
+        grid-template-columns: repeat(6, 40px);
+        grid-template-rows: repeat(5, 40px);
+      }
+
+      .drop {
+        width: 40px;
+        height: 40px;
+      }
+    }
   </style>
 </head>
 <body>
@@ -93,8 +109,8 @@
           drop.dataset.type = type;
           drop.dataset.row = rowIndex;
           drop.dataset.col = colIndex;
-          drop.style.left = `${colIndex * 55}px`;
-          drop.style.top = `${rowIndex * 55}px`;
+          drop.style.left = `${colIndex * (window.innerWidth <= 768 ? 45 : 55)}px`;
+          drop.style.top = `${rowIndex * (window.innerWidth <= 768 ? 45 : 55)}px`;
           grid.appendChild(drop);
         });
       });
@@ -196,23 +212,40 @@
       renderGrid();
     }
 
-    grid.addEventListener("mousedown", (e) => {
-      if (e.target.classList.contains("drop")) {
+    grid.addEventListener("mousedown", startDrag);
+    grid.addEventListener("mousemove", drag);
+    grid.addEventListener("mouseup", endDrag);
+
+    grid.addEventListener("touchstart", (e) => {
+      const touch = e.touches[0];
+      startDrag({ clientX: touch.clientX, clientY: touch.clientY });
+    });
+
+    grid.addEventListener("touchmove", (e) => {
+      const touch = e.touches[0];
+      drag({ clientX: touch.clientX, clientY: touch.clientY });
+    });
+
+    grid.addEventListener("touchend", endDrag);
+
+    function startDrag(e) {
+      const target = document.elementFromPoint(e.clientX, e.clientY);
+      if (target && target.classList.contains("drop")) {
         isDragging = true;
-        draggedElement = e.target;
+        draggedElement = target;
         startRow = parseInt(draggedElement.dataset.row);
         startCol = parseInt(draggedElement.dataset.col);
       }
-    });
+    }
 
-    grid.addEventListener("mousemove", (e) => {
+    function drag(e) {
       if (isDragging && draggedElement) {
         const gridRect = grid.getBoundingClientRect();
         const mouseX = e.clientX - gridRect.left;
         const mouseY = e.clientY - gridRect.top;
 
-        const targetCol = Math.floor(mouseX / 55);
-        const targetRow = Math.floor(mouseY / 55);
+        const targetCol = Math.floor(mouseX / (window.innerWidth <= 768 ? 45 : 55));
+        const targetRow = Math.floor(mouseY / (window.innerWidth <= 768 ? 45 : 55));
 
         if (
           targetCol >= 0 &&
@@ -226,15 +259,15 @@
           startCol = targetCol;
         }
       }
-    });
+    }
 
-    grid.addEventListener("mouseup", () => {
+    function endDrag() {
       if (isDragging) {
         isDragging = false;
         draggedElement = null;
         checkCombos();
       }
-    });
+    }
 
     renderGrid();
   </script>
